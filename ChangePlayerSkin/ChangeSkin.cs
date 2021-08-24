@@ -9,12 +9,12 @@ namespace ChangePlayerSkin
 {
     [ModLoader.ModManager]
     [HarmonyPatch(typeof(Players.Player), "UpdatePosition")]
-    public class ThisIsCrazy : IAfterWorldLoad
+    public class ChangeSkin : IAfterWorldLoad
     {
         public static ushort newPlayerSkin;
         public void AfterWorldLoad()
         {
-            var harmony = new Harmony("Khanx.ChangePlayerSkin");
+            var harmony = new Harmony("Khanx.ChangeSkin");
             Harmony.DEBUG = true;
             harmony.PatchAll();
 
