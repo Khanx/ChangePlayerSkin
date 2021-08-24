@@ -15,9 +15,8 @@ namespace ChangePlayerSkin
         public void AfterWorldLoad()
         {
             var harmony = new Harmony("Khanx.ChangeSkin");
-            Harmony.DEBUG = true;
+            //Harmony.DEBUG = true;
             harmony.PatchAll();
-
             newPlayerSkin = NPC.NPCType.GetByKeyNameOrDefault("pipliz.merchant").Type;
         }
 
