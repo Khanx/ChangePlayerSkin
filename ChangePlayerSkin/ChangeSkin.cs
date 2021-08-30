@@ -4,6 +4,7 @@ using ModLoaderInterfaces;
 using UnityEngine;
 using Shared.Networking;
 using MeshedObjects;
+using System.Collections.Generic;
 
 namespace ChangePlayerSkin
 {
@@ -11,17 +12,43 @@ namespace ChangePlayerSkin
     [HarmonyPatch(typeof(Players.Player), "UpdatePosition")]
     public class ChangeSkin : IAfterWorldLoad
     {
-        public static ushort newPlayerSkin;
+        private static readonly Dictionary<NetworkID, ushort> playerSkin = new Dictionary<NetworkID, ushort>();
+        private static readonly Dictionary<NetworkID, ServerTimeStamp> nextSkin = new Dictionary<NetworkID, ServerTimeStamp>();
+        private static readonly long timeBetweenSkins = 950L;
+
+        public static void ChangePlayerSkin(NetworkID playerID, ushort newSkin)
+        {
+            playerSkin[playerID] = newSkin;
+            nextSkin[playerID] = ServerTimeStamp.Now;
+        }
+
+        public static ushort defaultPlayerSkin;
         public void AfterWorldLoad()
         {
             var harmony = new Harmony("Khanx.ChangeSkin");
             //Harmony.DEBUG = true;
             harmony.PatchAll();
-            newPlayerSkin = NPC.NPCType.GetByKeyNameOrDefault("pipliz.merchant").Type;
+            defaultPlayerSkin = NPC.NPCType.GetByKeyNameOrDefault("pipliz.networkplayer").Type;
         }
 
         public static bool Prefix(Players.Player __instance, ByteReader data)
         {
+            if(nextSkin.TryGetValue(__instance.ID, out ServerTimeStamp time))
+            {
+                if (time.TimeSinceThis < timeBetweenSkins)
+                    return false;
+                else
+                {
+                    nextSkin.Remove(__instance.ID);
+                    /*
+                    for(int i=0;i<5;i++)
+                        __instance.UpdatePosition(data);
+                    */
+                }
+            }
+
+            ushort newPlayerSkin = playerSkin.GetValueOrDefault(__instance.ID, defaultPlayerSkin);
+
             Vector3 v = data.ReadVector3Single();
             uint num = data.ReadVariableUInt();
             uint num2 = data.ReadVariableUInt();
