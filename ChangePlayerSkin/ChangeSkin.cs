@@ -12,11 +12,11 @@ namespace ChangePlayerSkin
     [HarmonyPatch(typeof(Players.Player), "UpdatePosition")]
     public class ChangeSkin : IAfterWorldLoad
     {
-        private static readonly Dictionary<NetworkID, ushort> playerSkin = new Dictionary<NetworkID, ushort>();
-        private static readonly Dictionary<NetworkID, ServerTimeStamp> nextSkin = new Dictionary<NetworkID, ServerTimeStamp>();
+        private static readonly Dictionary<Players.PlayerIDShort, ushort> playerSkin = new Dictionary<Players.PlayerIDShort, ushort>();
+        private static readonly Dictionary<Players.PlayerIDShort, ServerTimeStamp> nextSkin = new Dictionary<Players.PlayerIDShort, ServerTimeStamp>();
         private static readonly long timeBetweenSkins = 950L;
 
-        public static void ChangePlayerSkin(NetworkID playerID, ushort newSkin)
+        public static void ChangePlayerSkin(Players.PlayerIDShort playerID, ushort newSkin)
         {
             playerSkin[playerID] = newSkin;
             nextSkin[playerID] = ServerTimeStamp.Now;
@@ -33,13 +33,13 @@ namespace ChangePlayerSkin
 
         public static bool Prefix(Players.Player __instance, ByteReader data)
         {
-            if(nextSkin.TryGetValue(__instance.ID, out ServerTimeStamp time))
+            if(nextSkin.TryGetValue(__instance.ID.ID, out ServerTimeStamp time))
             {
                 if (time.TimeSinceThis < timeBetweenSkins)
                     return false;
                 else
                 {
-                    nextSkin.Remove(__instance.ID);
+                    nextSkin.Remove(__instance.ID.ID);
                     /*
                     for(int i=0;i<5;i++)
                         __instance.UpdatePosition(data);
@@ -47,7 +47,10 @@ namespace ChangePlayerSkin
                 }
             }
 
-            ushort newPlayerSkin = playerSkin.GetValueOrDefault(__instance.ID, defaultPlayerSkin);
+            ushort newPlayerSkin = defaultPlayerSkin;
+
+            if (playerSkin.ContainsKey(__instance.ID.ID))
+                newPlayerSkin = playerSkin[__instance.ID.ID];
 
             Vector3 v = data.ReadVector3Single();
             uint num = data.ReadVariableUInt();
@@ -72,7 +75,7 @@ namespace ChangePlayerSkin
             using (ByteBuilder byteBuilder = ByteBuilder.Get())
             {
                 byteBuilder.Write(ClientMessageType.PlayerUpdate);
-                __instance.ID.GetBytes(byteBuilder);
+                byteBuilder.WriteVariable(__instance.ID.ID.ID);
                 byteBuilder.Write(newPlayerSkin);
                 byteBuilder.Write(v);
                 byteBuilder.WriteVariable(num);
